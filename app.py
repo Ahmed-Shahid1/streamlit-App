@@ -1,40 +1,42 @@
 import streamlit as st
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
+import requests
 from io import BytesIO
 
-st.title('Embedding Similarity App')
+st.title('Reuters Article Similarity Finder')
 
-uploaded_file = st.file_uploader("Upload a numpy array of embeddings", type=["npy"])
+# Load article embeddings and text data
+document_embeddings = np.load("document_embeddings.npy")
+document_embeddings = document_embeddings[:500]
+reuters_articles = np.load("articles.npy", allow_pickle=True)
 
-if uploaded_file is not None:
-    # Load the numpy array
-    embeddings = np.load(BytesIO(uploaded_file.read()))
+st.write(f"Successfully loaded {len(reuters_articles)} articles.")
 
-    # Display the shape of the embeddings
-    st.write(f"Embeddings shape: {embeddings.shape}")
+# Dropdown to select a model
+available_models = ['Model A', 'Model B', 'Model C']
+chosen_model = st.selectbox('Choose a model:', available_models)
 
-    # Define the list of models (for demonstration purposes)
-    models = ['Model A', 'Model B', 'Model C']
+# User input for text
+input_text = st.text_input('Enter text to compare:')
 
-    # Create a drop-down list for model selection
-    selected_model = st.selectbox('Select a model:', models)
+# Button to trigger similarity computation
+if st.button('Find Similar Articles'):
+    if input_text.strip():
+        # Generate a random user input embedding for demonstration
+        input_vector = np.random.rand(1, document_embeddings.shape[1])
 
-    # Create an input box for user text input
-    user_input = st.text_input('Enter your text:')
+        # Calculate cosine similarity between user input and document embeddings
+        similarity_scores = cosine_similarity(input_vector, document_embeddings)
 
-    # Create a submit button
-    if st.button('Submit'):
-        # Placeholder for converting user input to embeddings
-        # Replace this with actual model prediction logic
-        user_embedding = np.random.rand(1, embeddings.shape[1])
+        # Retrieve top-k most similar articles
+        top_results = 5
+        most_similar_indexes = np.argsort(similarity_scores[0])[-top_results:][::-1]
 
-        # Calculate cosine similarity
-        similarities = cosine_similarity(user_embedding, embeddings)
-
-        # Get the top-k most similar indexes
-        top_k = 5
-        top_k_indexes = np.argsort(similarities[0])[-top_k:][::-1]
-
-        # Display the top-k most similar indexes
-        st.write('Top-k most similar indexes:', top_k_indexes)
+        # Show snippets of top-k similar articles
+        st.write("Top 5 most relevant article snippets:")
+        for idx in most_similar_indexes:
+            article_snippet = reuters_articles[idx][:50]  # First 50 characters of the article
+            st.write(f" `{article_snippet}...`")
+    else:
+        st.warning("Please provide some text to compare.")
